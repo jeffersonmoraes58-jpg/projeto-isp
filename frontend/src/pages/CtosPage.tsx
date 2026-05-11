@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ctosApi, oltsApi } from '../services/api';
 import { Cto, Olt } from '../types';
+import CtoModal from '../components/CTO/CtoModal';
 
 interface CtoForm {
   nome: string;
@@ -28,6 +29,7 @@ export default function CtosPage() {
   const [filtro, setFiltro] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Cto | null>(null);
+  const [portasCtoId, setPortasCtoId] = useState<string | null>(null);
   const [form, setForm] = useState<CtoForm>(emptyForm);
 
   const { data: ctos = [], isLoading } = useQuery<Cto[]>({
@@ -150,7 +152,13 @@ export default function CtosPage() {
                     {c.olt ? `${c.olt.nome} (${c.olt.ip})` : '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-400">{c.capacidade} portas</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex items-center gap-1">
+                    <button
+                      onClick={() => setPortasCtoId(c.id)}
+                      className="text-xs px-2 py-1 bg-blue-900 text-blue-300 rounded hover:bg-blue-800 transition-colors"
+                    >
+                      Ver Portas
+                    </button>
                     <button
                       onClick={() => openEdit(c)}
                       className="text-xs px-2 py-1 bg-gray-800 text-gray-300 rounded hover:bg-gray-700 transition-colors"
@@ -163,6 +171,10 @@ export default function CtosPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {portasCtoId && (
+        <CtoModal ctoId={portasCtoId} onClose={() => setPortasCtoId(null)} />
       )}
 
       {showModal && (
