@@ -45,6 +45,7 @@ export interface Cliente {
   statusOnu: 'ONLINE' | 'OFFLINE' | 'PROVISIONANDO';
   statusFinanceiro: 'EM_DIA' | 'INADIMPLENTE' | 'SUSPENSO' | 'CANCELADO';
   sinalOnu: number | null;
+  ipFixo: string | null;
   plano: { nome: string; velocidadeDn: number; velocidadeUp: number; valor: number } | null;
 }
 

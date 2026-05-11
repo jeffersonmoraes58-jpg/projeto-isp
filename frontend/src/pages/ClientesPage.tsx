@@ -56,6 +56,17 @@ export default function ClientesPage() {
   });
   const clientes = resultado?.data ?? [];
 
+  const [roteador, setRoteador] = useState<{ cliente: Cliente; ip: string; porta: string; protocolo: 'http' | 'https' } | null>(null);
+
+  function abrirRoteador(c: Cliente) {
+    setRoteador({ cliente: c, ip: c.ipFixo ?? '', porta: '80', protocolo: 'http' });
+  }
+
+  function acessarRoteador() {
+    if (!roteador || !roteador.ip || !roteador.porta) return;
+    window.open(`${roteador.protocolo}://${roteador.ip}:${roteador.porta}`, '_blank', 'noopener,noreferrer');
+  }
+
   const [exportando, setExportando] = useState(false);
   async function exportarCsv() {
     setExportando(true);
@@ -248,28 +259,37 @@ export default function ClientesPage() {
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {c.plano ? `${c.plano.nome} (${c.plano.velocidadeDn}M)` : '—'}
                   </td>
-                  <td className="px-4 py-3 flex items-center gap-1">
-                    <button
-                      onClick={() => abrirEditar(c)}
-                      className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
-                    >
-                      Editar
-                    </button>
-                    {c.statusPppoe === 'ATIVO' ? (
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <button
-                        onClick={() => bloquear.mutate(c.id)}
-                        className="text-xs px-2 py-1 bg-red-900 text-red-300 rounded hover:bg-red-800 transition-colors"
+                        onClick={() => abrirEditar(c)}
+                        className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
                       >
-                        Bloquear
+                        Editar
                       </button>
-                    ) : c.statusPppoe === 'BLOQUEADO' ? (
                       <button
-                        onClick={() => desbloquear.mutate(c.id)}
-                        className="text-xs px-2 py-1 bg-green-900 text-green-300 rounded hover:bg-green-800 transition-colors"
+                        onClick={() => abrirRoteador(c)}
+                        className="text-xs px-2 py-1 bg-indigo-900 text-indigo-300 rounded hover:bg-indigo-800 transition-colors"
+                        title="Acesso remoto ao roteador do cliente"
                       >
-                        Desbloquear
+                        Roteador
                       </button>
-                    ) : null}
+                      {c.statusPppoe === 'ATIVO' ? (
+                        <button
+                          onClick={() => bloquear.mutate(c.id)}
+                          className="text-xs px-2 py-1 bg-red-900 text-red-300 rounded hover:bg-red-800 transition-colors"
+                        >
+                          Bloquear
+                        </button>
+                      ) : c.statusPppoe === 'BLOQUEADO' ? (
+                        <button
+                          onClick={() => desbloquear.mutate(c.id)}
+                          className="text-xs px-2 py-1 bg-green-900 text-green-300 rounded hover:bg-green-800 transition-colors"
+                        >
+                          Desbloquear
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -284,6 +304,107 @@ export default function ClientesPage() {
               onChange={(p) => setPage(p)}
             />
           )}
+        </div>
+      )}
+
+      {/* Modal Roteador */}
+      {roteador && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setRoteador(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-semibold">Gerenciar Roteador</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{roteador.cliente.nome}</p>
+              </div>
+              <button onClick={() => setRoteador(null)} className="text-gray-500 hover:text-gray-300">✕</button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Protocolo */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Protocolo</label>
+                <div className="flex gap-2">
+                  {(['http', 'https'] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setRoteador((r) => r ? { ...r, protocolo: p } : r)}
+                      className={`flex-1 text-sm py-1.5 rounded-lg font-medium transition-colors ${roteador.protocolo === p ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                    >
+                      {p.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* IP */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">
+                  Endereço IP
+                  {roteador.cliente.ipFixo && (
+                    <span className="ml-2 text-green-500">● do cadastro</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={roteador.ip}
+                  onChange={(e) => setRoteador((r) => r ? { ...r, ip: e.target.value } : r)}
+                  className={inputCls}
+                  placeholder="192.168.0.1"
+                />
+                {!roteador.cliente.ipFixo && (
+                  <p className="text-xs text-yellow-600 mt-1">⚠ IP fixo não cadastrado. Digite o IP manualmente.</p>
+                )}
+              </div>
+
+              {/* Porta */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Porta de acesso</label>
+                <input
+                  type="number"
+                  value={roteador.porta}
+                  onChange={(e) => setRoteador((r) => r ? { ...r, porta: e.target.value } : r)}
+                  className={inputCls}
+                  placeholder="80"
+                  onKeyDown={(e) => e.key === 'Enter' && acessarRoteador()}
+                  autoFocus
+                />
+                <div className="flex gap-1 mt-1.5">
+                  {['80', '8080', '443', '8443'].map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setRoteador((r) => r ? { ...r, porta: p, protocolo: (p === '443' || p === '8443') ? 'https' : r.protocolo } : r)}
+                      className="text-xs px-2 py-0.5 bg-gray-800 text-gray-400 rounded hover:bg-gray-700 transition-colors"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview da URL */}
+              {roteador.ip && roteador.porta && (
+                <div className="bg-gray-800 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-500 mb-0.5">URL de acesso</p>
+                  <p className="text-xs font-mono text-blue-400 break-all">
+                    {roteador.protocolo}://{roteador.ip}:{roteador.porta}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setRoteador(null)} className="flex-1 text-sm py-2 bg-gray-800 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={acessarRoteador}
+                disabled={!roteador.ip || !roteador.porta}
+                className="flex-1 text-sm py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
+              >
+                Acessar →
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
