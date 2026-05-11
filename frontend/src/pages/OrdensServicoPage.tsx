@@ -65,6 +65,10 @@ export default function OrdensServicoPage() {
   const [showConcluir, setShowConcluir] = useState<OrdemServico | null>(null);
   const [obsConclui, setObsConclui] = useState('');
 
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [clienteDropdown, setClienteDropdown] = useState(false);
+  const [clienteNome, setClienteNome] = useState('');
+
   const { data: resultado } = useQuery<{ data: OrdemServico[]; total: number; totalPages: number; page: number; limit: number }>({
     queryKey: ['ordens-servico', filtroStatus, page],
     queryFn: () => ordensServicoApi.getAll({
@@ -80,8 +84,8 @@ export default function OrdensServicoPage() {
   });
 
   const { data: clientes = [] } = useQuery<Cliente[]>({
-    queryKey: ['clientes'],
-    queryFn: () => clientesApi.getAll(),
+    queryKey: ['clientes-select'],
+    queryFn: () => clientesApi.getAll({ limit: 500 }).then((r) => r.data ?? r),
     enabled: showModal,
   });
 
@@ -113,7 +117,14 @@ export default function OrdensServicoPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ordens-servico'] }); qc.invalidateQueries({ queryKey: ['ordens-servico-stats'] }); },
   });
 
-  function abrirNova() { setEditing(null); setForm({ ...emptyForm }); setShowModal(true); }
+  function abrirNova() {
+    setEditing(null);
+    setForm({ ...emptyForm });
+    setClienteSearch('');
+    setClienteNome('');
+    setClienteDropdown(false);
+    setShowModal(true);
+  }
 
   function abrirEditar(os: OrdemServico) {
     setEditing(os);
@@ -123,13 +134,41 @@ export default function OrdensServicoPage() {
       tecnicoId: os.tecnicoId ?? '', endereco: os.endereco ?? '',
       agendadoPara: os.agendadoPara ? os.agendadoPara.slice(0, 16) : '',
     });
+    setClienteSearch('');
+    setClienteNome(os.cliente?.nome ?? '');
+    setClienteDropdown(false);
     setShowModal(true);
+  }
+
+  async function selecionarCliente(c: Cliente) {
+    setClienteNome(c.nome);
+    setClienteSearch('');
+    setClienteDropdown(false);
+    setForm((p) => ({ ...p, clienteId: c.id }));
+    try {
+      const detalhe = await clientesApi.getOne(c.id);
+      const partes = [detalhe.logradouro, detalhe.numero, detalhe.bairro, detalhe.cidade && detalhe.uf ? `${detalhe.cidade}/${detalhe.uf}` : detalhe.cidade].filter(Boolean);
+      if (partes.length > 0) setForm((p) => ({ ...p, clienteId: c.id, endereco: partes.join(', ') }));
+    } catch { /* endereço não crítico */ }
+  }
+
+  function limparCliente() {
+    setClienteNome('');
+    setClienteSearch('');
+    setForm((p) => ({ ...p, clienteId: '', endereco: '' }));
   }
 
   function fecharModal() { setShowModal(false); setEditing(null); }
   function set(field: keyof typeof emptyForm, value: string) { setForm((p) => ({ ...p, [field]: value })); }
 
   const ordens = resultado?.data ?? [];
+
+  const clientesFiltrados = clienteSearch.length >= 1
+    ? clientes.filter((c) => {
+        const q = clienteSearch.toLowerCase();
+        return c.nome.toLowerCase().includes(q) || c.cpfCnpj.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+      }).slice(0, 8)
+    : [];
 
   return (
     <div className="p-6 space-y-5">
@@ -267,12 +306,47 @@ export default function OrdensServicoPage() {
                 <label className="text-xs text-gray-500 block mb-1">Descrição</label>
                 <textarea value={form.descricao} onChange={(e) => set('descricao', e.target.value)} rows={2} className={inputCls + ' resize-none'} placeholder="Detalhes do problema ou serviço" />
               </div>
-              <div>
+              <div className="relative">
                 <label className="text-xs text-gray-500 block mb-1">Cliente</label>
-                <select value={form.clienteId} onChange={(e) => set('clienteId', e.target.value)} className={inputCls}>
-                  <option value="">Selecione...</option>
-                  {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
+                {clienteNome ? (
+                  <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+                    <span className="flex-1 text-sm text-white truncate">{clienteNome}</span>
+                    <button type="button" onClick={limparCliente} className="text-gray-500 hover:text-gray-300 text-xs flex-shrink-0">✕</button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={clienteSearch}
+                      onChange={(e) => { setClienteSearch(e.target.value); setClienteDropdown(true); }}
+                      onFocus={() => setClienteDropdown(true)}
+                      onBlur={() => setTimeout(() => setClienteDropdown(false), 150)}
+                      className={inputCls}
+                      placeholder="Digite nome ou CPF/CNPJ..."
+                      autoComplete="off"
+                    />
+                    {clienteDropdown && clientesFiltrados.length > 0 && (
+                      <div className="absolute z-10 top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+                        {clientesFiltrados.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={() => selecionarCliente(c)}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-0"
+                          >
+                            <p className="text-sm text-white">{c.nome}</p>
+                            <p className="text-xs text-gray-500">{c.cpfCnpj}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {clienteDropdown && clienteSearch.length >= 1 && clientesFiltrados.length === 0 && (
+                      <div className="absolute z-10 top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+                        <p className="text-xs text-gray-500">Nenhum cliente encontrado</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Técnico</label>

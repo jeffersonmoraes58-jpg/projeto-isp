@@ -42,7 +42,7 @@ export const ctosApi = {
 };
 
 export const clientesApi = {
-  getAll: (params?: { status?: string; inadimplente?: boolean; page?: number; limit?: number }) =>
+  getAll: (params?: { status?: string; inadimplente?: boolean; page?: number; limit?: number; search?: string; oltId?: string }) =>
     api.get('/clientes', { params }).then((r) => r.data),
   getOne: (id: string) => api.get(`/clientes/${id}`).then((r) => r.data),
   create: (body: object) => api.post('/clientes', body).then((r) => r.data),

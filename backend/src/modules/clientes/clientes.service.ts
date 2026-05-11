@@ -23,12 +23,20 @@ export class ClientesService {
     return cliente;
   }
 
-  async findAll(filtros?: { status?: string; inadimplente?: boolean; page?: number; limit?: number }) {
+  async findAll(filtros?: { status?: string; inadimplente?: boolean; page?: number; limit?: number; search?: string; oltId?: string }) {
     const page = filtros?.page ?? 1;
     const limit = filtros?.limit ?? 20;
     const where: any = {
       ...(filtros?.status && { statusPppoe: filtros.status }),
       ...(filtros?.inadimplente && { statusFinanceiro: 'INADIMPLENTE' }),
+      ...(filtros?.oltId && { ctoPorta: { cto: { oltId: filtros.oltId } } }),
+      ...(filtros?.search && {
+        OR: [
+          { nome: { contains: filtros.search, mode: 'insensitive' } },
+          { cpfCnpj: { contains: filtros.search } },
+          { usuarioPppoe: { contains: filtros.search, mode: 'insensitive' } },
+        ],
+      }),
     };
 
     const [data, total] = await Promise.all([

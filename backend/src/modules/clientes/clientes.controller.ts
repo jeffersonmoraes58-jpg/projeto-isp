@@ -34,12 +34,16 @@ export class ClientesController {
     @Query('inadimplente') inadimplente?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('oltId') oltId?: string,
   ) {
     return this.clientesService.findAll({
       status,
       inadimplente: inadimplente === 'true',
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
+      search: search || undefined,
+      oltId: oltId || undefined,
     });
   }
 
