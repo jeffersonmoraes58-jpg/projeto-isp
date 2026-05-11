@@ -38,12 +38,17 @@ export const clientesApi = {
   getAll: (params?: { status?: string; inadimplente?: boolean }) =>
     api.get('/clientes', { params }).then((r) => r.data),
   getOne: (id: string) => api.get(`/clientes/${id}`).then((r) => r.data),
+  create: (body: object) => api.post('/clientes', body).then((r) => r.data),
+  update: (id: string, body: object) => api.put(`/clientes/${id}`, body).then((r) => r.data),
   bloquear: (id: string) => api.put(`/clientes/${id}/bloquear`).then((r) => r.data),
   desbloquear: (id: string) => api.put(`/clientes/${id}/desbloquear`).then((r) => r.data),
 };
 
 export const oltsApi = {
   getAll: () => api.get('/olts').then((r) => r.data),
+  create: (body: object) => api.post('/olts', body).then((r) => r.data),
+  update: (id: string, body: object) => api.put(`/olts/${id}`, body).then((r) => r.data),
+  remove: (id: string) => api.delete(`/olts/${id}`).then((r) => r.data),
   testar: (id: string) => api.get(`/olts/${id}/testar`).then((r) => r.data),
 };
 

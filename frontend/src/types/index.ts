@@ -105,6 +105,15 @@ export interface Notificacao {
   createdAt: string;
 }
 
+export interface User {
+  id: string;
+  nome: string;
+  email: string;
+  role: 'ADMIN' | 'OPERADOR' | 'TECNICO';
+  ativo: boolean;
+  createdAt: string;
+}
+
 export interface Cto {
   id: string;
   nome: string;

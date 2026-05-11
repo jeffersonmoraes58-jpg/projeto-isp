@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientesApi } from '../services/api';
-import { Cliente } from '../types';
+import { clientesApi, planosApi } from '../services/api';
+import { Cliente, Plano } from '../types';
 
 const statusPppoeColor: Record<string, string> = {
   ATIVO: 'bg-green-900 text-green-400',
@@ -15,13 +15,60 @@ const statusOnuColor: Record<string, string> = {
   PROVISIONANDO: 'text-yellow-400',
 };
 
+const emptyForm = {
+  nome: '', cpfCnpj: '', email: '', celular: '',
+  usuarioPppoe: '', senhaPppoe: '',
+  logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', cep: '',
+  planoId: '', diaVencimento: '10',
+  serialOnu: '', macOnu: '', modeloOnu: '',
+};
+
+type FormData = typeof emptyForm;
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500 block mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500';
+
 export default function ClientesPage() {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Cliente | null>(null);
+  const [form, setForm] = useState<FormData>({ ...emptyForm });
+  const [tab, setTab] = useState<'dados' | 'endereco' | 'onu'>('dados');
+  const [erro, setErro] = useState('');
 
   const { data: clientes = [], isLoading } = useQuery<Cliente[]>({
     queryKey: ['clientes'],
     queryFn: () => clientesApi.getAll(),
+  });
+
+  const { data: planos = [] } = useQuery<Plano[]>({
+    queryKey: ['planos'],
+    queryFn: planosApi.getAll,
+    enabled: showModal,
+  });
+
+  const salvar = useMutation({
+    mutationFn: () =>
+      editing
+        ? clientesApi.update(editing.id, buildPayload())
+        : clientesApi.create(buildPayload()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes'] });
+      fecharModal();
+    },
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message;
+      setErro(Array.isArray(msg) ? msg.join(', ') : (msg ?? 'Erro ao salvar'));
+    },
   });
 
   const bloquear = useMutation({
@@ -34,6 +81,67 @@ export default function ClientesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes'] }),
   });
 
+  function buildPayload() {
+    const p: Record<string, any> = {
+      nome: form.nome,
+      cpfCnpj: form.cpfCnpj,
+      usuarioPppoe: form.usuarioPppoe,
+    };
+    if (form.email) p.email = form.email;
+    if (form.celular) p.celular = form.celular;
+    if (!editing && form.senhaPppoe) p.senhaPppoe = form.senhaPppoe;
+    if (form.logradouro) p.logradouro = form.logradouro;
+    if (form.numero) p.numero = form.numero;
+    if (form.complemento) p.complemento = form.complemento;
+    if (form.bairro) p.bairro = form.bairro;
+    if (form.cidade) p.cidade = form.cidade;
+    if (form.uf) p.uf = form.uf;
+    if (form.cep) p.cep = form.cep;
+    if (form.planoId) p.planoId = form.planoId;
+    if (form.diaVencimento) p.diaVencimento = parseInt(form.diaVencimento, 10);
+    if (form.serialOnu) p.serialOnu = form.serialOnu;
+    if (form.macOnu) p.macOnu = form.macOnu;
+    if (form.modeloOnu) p.modeloOnu = form.modeloOnu;
+    return p;
+  }
+
+  function abrirNovo() {
+    setEditing(null);
+    setForm({ ...emptyForm });
+    setTab('dados');
+    setErro('');
+    setShowModal(true);
+  }
+
+  function abrirEditar(c: Cliente) {
+    setEditing(c);
+    setForm({
+      nome: c.nome,
+      cpfCnpj: c.cpfCnpj,
+      email: c.email ?? '',
+      celular: c.celular ?? '',
+      usuarioPppoe: c.usuarioPppoe,
+      senhaPppoe: '',
+      logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', cep: '',
+      planoId: '',
+      diaVencimento: '10',
+      serialOnu: '', macOnu: '', modeloOnu: '',
+    });
+    setTab('dados');
+    setErro('');
+    setShowModal(true);
+  }
+
+  function fecharModal() {
+    setShowModal(false);
+    setEditing(null);
+    setErro('');
+  }
+
+  function set(field: keyof FormData, value: string) {
+    setForm((p) => ({ ...p, [field]: value }));
+  }
+
   const filtrados = clientes.filter(
     (c) =>
       c.nome.toLowerCase().includes(filtro.toLowerCase()) ||
@@ -45,7 +153,15 @@ export default function ClientesPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">Clientes</h2>
-        <span className="text-sm text-gray-500">{filtrados.length} registros</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{filtrados.length} registros</span>
+          <button
+            onClick={abrirNovo}
+            className="text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+          >
+            + Novo Cliente
+          </button>
+        </div>
       </div>
 
       <input
@@ -94,7 +210,13 @@ export default function ClientesPage() {
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {c.plano ? `${c.plano.nome} (${c.plano.velocidadeDn}M)` : '—'}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex items-center gap-1">
+                    <button
+                      onClick={() => abrirEditar(c)}
+                      className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                    >
+                      Editar
+                    </button>
                     {c.statusPppoe === 'ATIVO' ? (
                       <button
                         onClick={() => bloquear.mutate(c.id)}
@@ -115,6 +237,140 @@ export default function ClientesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {showModal && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={fecharModal}
+        >
+          <div
+            className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+              <h3 className="text-white font-semibold">{editing ? 'Editar Cliente' : 'Novo Cliente'}</h3>
+              <button onClick={fecharModal} className="text-gray-500 hover:text-gray-300">✕</button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-800 px-6">
+              {(['dados', 'endereco', 'onu'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`py-2.5 px-4 text-xs font-medium border-b-2 transition-colors ${
+                    tab === t
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {t === 'dados' ? 'Dados Pessoais' : t === 'endereco' ? 'Endereço' : 'ONU / PPPoE'}
+                </button>
+              ))}
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+              {tab === 'dados' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Nome *">
+                      <input type="text" value={form.nome} onChange={(e) => set('nome', e.target.value)} className={inputCls} placeholder="Nome completo" />
+                    </Field>
+                    <Field label="CPF / CNPJ *">
+                      <input type="text" value={form.cpfCnpj} onChange={(e) => set('cpfCnpj', e.target.value)} className={inputCls} placeholder="000.000.000-00" />
+                    </Field>
+                    <Field label="E-mail">
+                      <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputCls} placeholder="email@exemplo.com" />
+                    </Field>
+                    <Field label="Celular">
+                      <input type="text" value={form.celular} onChange={(e) => set('celular', e.target.value)} className={inputCls} placeholder="(11) 99999-9999" />
+                    </Field>
+                    <Field label="Plano">
+                      <select value={form.planoId} onChange={(e) => set('planoId', e.target.value)} className={inputCls}>
+                        <option value="">Selecione...</option>
+                        {planos.filter((p) => p.ativo).map((p) => (
+                          <option key={p.id} value={p.id}>{p.nome} — {p.velocidadeDn}M — R$ {Number(p.valor).toFixed(2)}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Dia de Vencimento">
+                      <input type="number" min={1} max={31} value={form.diaVencimento} onChange={(e) => set('diaVencimento', e.target.value)} className={inputCls} />
+                    </Field>
+                  </div>
+                </>
+              )}
+
+              {tab === 'endereco' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="CEP">
+                    <input type="text" value={form.cep} onChange={(e) => set('cep', e.target.value)} className={inputCls} placeholder="00000-000" />
+                  </Field>
+                  <Field label="Número">
+                    <input type="text" value={form.numero} onChange={(e) => set('numero', e.target.value)} className={inputCls} placeholder="123" />
+                  </Field>
+                  <div className="col-span-2">
+                    <Field label="Logradouro">
+                      <input type="text" value={form.logradouro} onChange={(e) => set('logradouro', e.target.value)} className={inputCls} placeholder="Rua, Avenida..." />
+                    </Field>
+                  </div>
+                  <Field label="Complemento">
+                    <input type="text" value={form.complemento} onChange={(e) => set('complemento', e.target.value)} className={inputCls} placeholder="Apto, Bloco..." />
+                  </Field>
+                  <Field label="Bairro">
+                    <input type="text" value={form.bairro} onChange={(e) => set('bairro', e.target.value)} className={inputCls} placeholder="Bairro" />
+                  </Field>
+                  <Field label="Cidade">
+                    <input type="text" value={form.cidade} onChange={(e) => set('cidade', e.target.value)} className={inputCls} placeholder="Cidade" />
+                  </Field>
+                  <Field label="UF">
+                    <input type="text" maxLength={2} value={form.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} className={inputCls} placeholder="SP" />
+                  </Field>
+                </div>
+              )}
+
+              {tab === 'onu' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Usuário PPPoE *">
+                    <input type="text" value={form.usuarioPppoe} onChange={(e) => set('usuarioPppoe', e.target.value)} className={inputCls} placeholder="cliente01" />
+                  </Field>
+                  <Field label={editing ? 'Nova Senha PPPoE (vazio = não alterar)' : 'Senha PPPoE *'}>
+                    <input type="text" value={form.senhaPppoe} onChange={(e) => set('senhaPppoe', e.target.value)} className={inputCls} placeholder="senha123" />
+                  </Field>
+                  <Field label="Serial ONU">
+                    <input type="text" value={form.serialOnu} onChange={(e) => set('serialOnu', e.target.value)} className={inputCls} placeholder="ZTEG12345678" />
+                  </Field>
+                  <Field label="MAC ONU">
+                    <input type="text" value={form.macOnu} onChange={(e) => set('macOnu', e.target.value)} className={inputCls} placeholder="AA:BB:CC:DD:EE:FF" />
+                  </Field>
+                  <Field label="Modelo ONU">
+                    <input type="text" value={form.modeloOnu} onChange={(e) => set('modeloOnu', e.target.value)} className={inputCls} placeholder="ZTE F660" />
+                  </Field>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {erro && <p className="px-6 text-xs text-red-400">{erro}</p>}
+            <div className="flex gap-2 px-6 py-4 border-t border-gray-800">
+              <button
+                onClick={fecharModal}
+                className="flex-1 text-sm py-2 bg-gray-800 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => salvar.mutate()}
+                disabled={!form.nome || !form.cpfCnpj || !form.usuarioPppoe || (!editing && !form.senhaPppoe) || salvar.isPending}
+                className="flex-1 text-sm py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50"
+              >
+                {salvar.isPending ? 'Salvando...' : editing ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

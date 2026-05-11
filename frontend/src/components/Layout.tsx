@@ -11,6 +11,7 @@ const nav = [
   { to: '/financeiro', label: 'Financeiro', icon: '💰' },
   { to: '/alarmes', label: 'Alarmes', icon: '🔔' },
   { to: '/notificacoes', label: 'Notificações', icon: '📨' },
+  { to: '/usuarios', label: 'Usuários', icon: '🔐' },
 ];
 
 export default function Layout() {
