@@ -38,8 +38,8 @@ export default function CtoModal({ ctoId, onClose }: Props) {
   });
 
   const { data: clientes = [] } = useQuery<Cliente[]>({
-    queryKey: ['clientes'],
-    queryFn: () => clientesApi.getAll(),
+    queryKey: ['clientes-select'],
+    queryFn: () => clientesApi.getAll({ limit: 500 }).then((r) => r.data ?? r),
     enabled: portaSelecionada?.status === 'LIVRE',
   });
 

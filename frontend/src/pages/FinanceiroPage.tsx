@@ -32,6 +32,9 @@ export default function FinanceiroPage() {
   const [exportando, setExportando] = useState(false);
   const [form, setForm] = useState({ clienteId: '', valor: '', vencimento: '' });
   const [reguaResult, setReguaResult] = useState<{ avisos: number; bloqueados: number } | null>(null);
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [clienteDropdown, setClienteDropdown] = useState(false);
+  const [clienteNome, setClienteNome] = useState('');
 
   const { data: resultado, isLoading } = useQuery<{ data: Fatura[]; total: number; totalPages: number; page: number }>({
     queryKey: ['faturas', filtro, page],
@@ -50,10 +53,38 @@ export default function FinanceiroPage() {
   }
 
   const { data: clientes = [] } = useQuery<Cliente[]>({
-    queryKey: ['clientes'],
-    queryFn: () => clientesApi.getAll(),
+    queryKey: ['clientes-select'],
+    queryFn: () => clientesApi.getAll({ limit: 500 }).then((r) => r.data ?? r),
     enabled: showNovaFatura,
   });
+
+  const clientesFiltrados = clienteSearch.length >= 1
+    ? clientes.filter((c) => {
+        const q = clienteSearch.toLowerCase();
+        return c.nome.toLowerCase().includes(q) || c.cpfCnpj.replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+      }).slice(0, 8)
+    : [];
+
+  function abrirNovaFatura() {
+    setForm({ clienteId: '', valor: '', vencimento: '' });
+    setClienteNome('');
+    setClienteSearch('');
+    setClienteDropdown(false);
+    setShowNovaFatura(true);
+  }
+
+  function selecionarCliente(c: Cliente) {
+    setForm((p) => ({ ...p, clienteId: c.id }));
+    setClienteNome(c.nome);
+    setClienteSearch('');
+    setClienteDropdown(false);
+  }
+
+  function limparCliente() {
+    setForm((p) => ({ ...p, clienteId: '' }));
+    setClienteNome('');
+    setClienteSearch('');
+  }
 
   const gerarFatura = useMutation({
     mutationFn: () =>
@@ -108,7 +139,7 @@ export default function FinanceiroPage() {
             {regua.isPending ? 'Executando...' : 'Executar Régua de Cobrança'}
           </button>
           <button
-            onClick={() => setShowNovaFatura(true)}
+            onClick={abrirNovaFatura}
             className="text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
           >
             + Nova Fatura
@@ -282,20 +313,47 @@ export default function FinanceiroPage() {
             </div>
 
             <div className="space-y-3">
-              <div>
+              <div className="relative">
                 <label className="text-xs text-gray-500 block mb-1">Cliente</label>
-                <select
-                  value={form.clienteId}
-                  onChange={(e) => setForm((p) => ({ ...p, clienteId: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="">Selecione...</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome}
-                    </option>
-                  ))}
-                </select>
+                {clienteNome ? (
+                  <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+                    <span className="flex-1 text-sm text-white truncate">{clienteNome}</span>
+                    <button type="button" onClick={limparCliente} className="text-gray-500 hover:text-gray-300 text-xs flex-shrink-0">✕</button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={clienteSearch}
+                      onChange={(e) => { setClienteSearch(e.target.value); setClienteDropdown(true); }}
+                      onFocus={() => setClienteDropdown(true)}
+                      onBlur={() => setTimeout(() => setClienteDropdown(false), 150)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                      placeholder="Digite nome ou CPF/CNPJ..."
+                      autoComplete="off"
+                    />
+                    {clienteDropdown && clientesFiltrados.length > 0 && (
+                      <div className="absolute z-10 top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+                        {clientesFiltrados.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={() => selecionarCliente(c)}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-0"
+                          >
+                            <p className="text-sm text-white">{c.nome}</p>
+                            <p className="text-xs text-gray-500">{c.cpfCnpj}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {clienteDropdown && clienteSearch.length >= 1 && clientesFiltrados.length === 0 && (
+                      <div className="absolute z-10 top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+                        <p className="text-xs text-gray-500">Nenhum cliente encontrado</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div>
