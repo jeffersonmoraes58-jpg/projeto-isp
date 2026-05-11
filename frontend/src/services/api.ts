@@ -42,13 +42,15 @@ export const ctosApi = {
 };
 
 export const clientesApi = {
-  getAll: (params?: { status?: string; inadimplente?: boolean }) =>
+  getAll: (params?: { status?: string; inadimplente?: boolean; page?: number; limit?: number }) =>
     api.get('/clientes', { params }).then((r) => r.data),
   getOne: (id: string) => api.get(`/clientes/${id}`).then((r) => r.data),
   create: (body: object) => api.post('/clientes', body).then((r) => r.data),
   update: (id: string, body: object) => api.put(`/clientes/${id}`, body).then((r) => r.data),
   bloquear: (id: string) => api.put(`/clientes/${id}/bloquear`).then((r) => r.data),
   desbloquear: (id: string) => api.put(`/clientes/${id}/desbloquear`).then((r) => r.data),
+  exportarCsv: (params?: { status?: string; inadimplente?: boolean }) =>
+    api.get('/clientes/exportar', { params, responseType: 'blob' }).then((r) => r.data),
 };
 
 export const oltsApi = {
@@ -60,12 +62,14 @@ export const oltsApi = {
 };
 
 export const financeiroApi = {
-  getFaturas: (status?: string) =>
-    api.get('/financeiro/faturas', { params: status ? { status } : undefined }).then((r) => r.data),
+  getFaturas: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get('/financeiro/faturas', { params }).then((r) => r.data),
   gerarFatura: (body: { clienteId: string; valor: number; vencimento: string }) =>
     api.post('/financeiro/faturas', body).then((r) => r.data),
   executarReguaCobranca: () =>
     api.post('/financeiro/regua-cobranca').then((r) => r.data),
+  exportarCsv: (status?: string) =>
+    api.get('/financeiro/faturas/exportar', { params: status ? { status } : undefined, responseType: 'blob' }).then((r) => r.data),
 };
 
 export const planosApi = {

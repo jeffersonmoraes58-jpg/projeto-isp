@@ -119,12 +119,44 @@ export class FinanceiroService {
 
   // ─── Listar Faturas ──────────────────────────────────────────────────────
 
-  async listarFaturas(status?: string) {
-    return this.prisma.fatura.findMany({
+  async listarFaturas(filtros?: { status?: string; page?: number; limit?: number }) {
+    const page = filtros?.page ?? 1;
+    const limit = filtros?.limit ?? 20;
+    const where = filtros?.status ? { status: filtros.status as any } : undefined;
+
+    const [data, total] = await Promise.all([
+      this.prisma.fatura.findMany({
+        where,
+        include: { cliente: { select: { nome: true, cpfCnpj: true } } },
+        orderBy: { vencimento: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.fatura.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async exportarCsv(status?: string): Promise<string> {
+    const faturas = await this.prisma.fatura.findMany({
       where: status ? { status: status as any } : undefined,
       include: { cliente: { select: { nome: true, cpfCnpj: true } } },
       orderBy: { vencimento: 'desc' },
     });
+
+    const header = 'Cliente,CPF/CNPJ,Valor,Vencimento,Status,Data Pagamento,Valor Pago';
+    const rows = faturas.map((f) =>
+      [
+        `"${f.cliente.nome}"`, f.cliente.cpfCnpj,
+        Number(f.valor).toFixed(2),
+        f.vencimento.toISOString().split('T')[0],
+        f.status,
+        f.dataPagamento ? f.dataPagamento.toISOString().split('T')[0] : '',
+        f.valorPago ? Number(f.valorPago).toFixed(2) : '',
+      ].join(','),
+    );
+    return [header, ...rows].join('\n');
   }
 
   // ─── Integração EFI Bank ─────────────────────────────────────────────────

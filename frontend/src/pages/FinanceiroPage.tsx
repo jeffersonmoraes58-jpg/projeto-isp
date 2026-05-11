@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { financeiroApi, clientesApi } from '../services/api';
 import { Fatura, Cliente } from '../types';
+import Pagination from '../components/Pagination';
+import { downloadBlob } from '../utils/download';
 
 const statusColor: Record<string, string> = {
   PENDENTE: 'bg-yellow-900 text-yellow-400',
@@ -23,15 +25,29 @@ function fmtData(iso: string) {
 export default function FinanceiroPage() {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState<string>('TODAS');
+  const [page, setPage] = useState(1);
+  const LIMIT = 20;
   const [qrFatura, setQrFatura] = useState<Fatura | null>(null);
   const [showNovaFatura, setShowNovaFatura] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [form, setForm] = useState({ clienteId: '', valor: '', vencimento: '' });
   const [reguaResult, setReguaResult] = useState<{ avisos: number; bloqueados: number } | null>(null);
 
-  const { data: faturas = [], isLoading } = useQuery<Fatura[]>({
-    queryKey: ['faturas', filtro],
-    queryFn: () => financeiroApi.getFaturas(filtro === 'TODAS' ? undefined : filtro),
+  const { data: resultado, isLoading } = useQuery<{ data: Fatura[]; total: number; totalPages: number; page: number }>({
+    queryKey: ['faturas', filtro, page],
+    queryFn: () => financeiroApi.getFaturas({ status: filtro === 'TODAS' ? undefined : filtro, page, limit: LIMIT }),
   });
+  const faturas = resultado?.data ?? [];
+
+  async function exportarCsv() {
+    setExportando(true);
+    try {
+      const blob = await financeiroApi.exportarCsv(filtro === 'TODAS' ? undefined : filtro);
+      downloadBlob(blob, 'faturas.csv');
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const { data: clientes = [] } = useQuery<Cliente[]>({
     queryKey: ['clientes'],
@@ -134,7 +150,7 @@ export default function FinanceiroPage() {
         {FILTROS.map((f) => (
           <button
             key={f}
-            onClick={() => setFiltro(f)}
+            onClick={() => { setFiltro(f); setPage(1); }}
             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
               filtro === f
                 ? 'bg-blue-600 text-white'
@@ -144,6 +160,13 @@ export default function FinanceiroPage() {
             {f}
           </button>
         ))}
+        <button
+          onClick={exportarCsv}
+          disabled={exportando}
+          className="text-xs px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 ml-auto"
+        >
+          {exportando ? 'Exportando...' : 'CSV'}
+        </button>
       </div>
 
       {/* Tabela */}
@@ -154,6 +177,7 @@ export default function FinanceiroPage() {
       ) : (
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
+
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
                 <th className="text-left px-4 py-3">Cliente</th>
@@ -197,6 +221,17 @@ export default function FinanceiroPage() {
               ))}
             </tbody>
           </table>
+          {resultado && (
+            <div className="px-4 pb-3">
+              <Pagination
+                page={resultado.page}
+                totalPages={resultado.totalPages}
+                total={resultado.total}
+                limit={LIMIT}
+                onChange={(p) => setPage(p)}
+              />
+            </div>
+          )}
         </div>
       )}
 

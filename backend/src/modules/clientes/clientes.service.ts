@@ -23,18 +23,51 @@ export class ClientesService {
     return cliente;
   }
 
-  findAll(filtros?: { status?: string; inadimplente?: boolean }) {
-    return this.prisma.cliente.findMany({
-      where: {
-        ...(filtros?.status && { statusPppoe: filtros.status as any }),
-        ...(filtros?.inadimplente && { statusFinanceiro: 'INADIMPLENTE' }),
-      },
-      include: {
-        plano: { select: { nome: true, velocidadeDn: true, velocidadeUp: true, valor: true } },
-        ctoPorta: { include: { cto: { select: { nome: true } } } },
-      },
+  async findAll(filtros?: { status?: string; inadimplente?: boolean; page?: number; limit?: number }) {
+    const page = filtros?.page ?? 1;
+    const limit = filtros?.limit ?? 20;
+    const where: any = {
+      ...(filtros?.status && { statusPppoe: filtros.status }),
+      ...(filtros?.inadimplente && { statusFinanceiro: 'INADIMPLENTE' }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.cliente.findMany({
+        where,
+        include: {
+          plano: { select: { nome: true, velocidadeDn: true, velocidadeUp: true, valor: true } },
+          ctoPorta: { include: { cto: { select: { nome: true } } } },
+        },
+        orderBy: { nome: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.cliente.count({ where }),
+    ]);
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async exportarCsv(filtros?: { status?: string; inadimplente?: boolean }): Promise<string> {
+    const where: any = {
+      ...(filtros?.status && { statusPppoe: filtros.status }),
+      ...(filtros?.inadimplente && { statusFinanceiro: 'INADIMPLENTE' }),
+    };
+    const clientes = await this.prisma.cliente.findMany({
+      where,
+      include: { plano: { select: { nome: true } } },
       orderBy: { nome: 'asc' },
-    });
+    }) as any[];
+
+    const header = 'Nome,CPF/CNPJ,E-mail,Celular,PPPoE,Status,ONU,Sinal (dBm),Plano,Status Financeiro';
+    const rows = clientes.map((c: any) =>
+      [
+        `"${c.nome}"`, c.cpfCnpj, c.email ?? '', c.celular ?? '',
+        c.usuarioPppoe, c.statusPppoe, c.statusOnu,
+        c.sinalOnu ?? '', `"${c.plano?.nome ?? ''}"`, c.statusFinanceiro,
+      ].join(','),
+    );
+    return [header, ...rows].join('\n');
   }
 
   async findOne(id: string) {

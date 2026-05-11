@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientesApi, planosApi } from '../services/api';
 import { Cliente, Plano } from '../types';
+import Pagination from '../components/Pagination';
+import { downloadBlob } from '../utils/download';
 
 const statusPppoeColor: Record<string, string> = {
   ATIVO: 'bg-green-900 text-green-400',
@@ -40,16 +42,30 @@ export default function ClientesPage() {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState('');
   const [soInadimplentes, setSoInadimplentes] = useState(false);
+  const [page, setPage] = useState(1);
+  const LIMIT = 20;
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Cliente | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [tab, setTab] = useState<'dados' | 'endereco' | 'onu'>('dados');
   const [erro, setErro] = useState('');
 
-  const { data: clientes = [], isLoading } = useQuery<Cliente[]>({
-    queryKey: ['clientes', soInadimplentes],
-    queryFn: () => clientesApi.getAll(soInadimplentes ? { inadimplente: true } : undefined),
+  const { data: resultado, isLoading } = useQuery<{ data: Cliente[]; total: number; totalPages: number; page: number; limit: number }>({
+    queryKey: ['clientes', soInadimplentes, page],
+    queryFn: () => clientesApi.getAll({ inadimplente: soInadimplentes || undefined, page, limit: LIMIT }),
   });
+  const clientes = resultado?.data ?? [];
+
+  const [exportando, setExportando] = useState(false);
+  async function exportarCsv() {
+    setExportando(true);
+    try {
+      const blob = await clientesApi.exportarCsv(soInadimplentes ? { inadimplente: true } : undefined);
+      downloadBlob(blob, 'clientes.csv');
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const { data: planos = [] } = useQuery<Plano[]>({
     queryKey: ['planos'],
@@ -143,12 +159,14 @@ export default function ClientesPage() {
     setForm((p) => ({ ...p, [field]: value }));
   }
 
-  const filtrados = clientes.filter(
-    (c) =>
-      c.nome.toLowerCase().includes(filtro.toLowerCase()) ||
-      c.usuarioPppoe.toLowerCase().includes(filtro.toLowerCase()) ||
-      c.cpfCnpj.includes(filtro),
-  );
+  const filtrados = filtro
+    ? clientes.filter(
+        (c) =>
+          c.nome.toLowerCase().includes(filtro.toLowerCase()) ||
+          c.usuarioPppoe.toLowerCase().includes(filtro.toLowerCase()) ||
+          c.cpfCnpj.includes(filtro),
+      )
+    : clientes;
 
   return (
     <div className="p-6 space-y-4">
@@ -156,21 +174,28 @@ export default function ClientesPage() {
         <h2 className="text-xl font-semibold text-white">Clientes</h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setSoInadimplentes(false)}
+            onClick={() => { setSoInadimplentes(false); setPage(1); }}
             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${!soInadimplentes ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
           >
             Todos
           </button>
           <button
-            onClick={() => setSoInadimplentes(true)}
+            onClick={() => { setSoInadimplentes(true); setPage(1); }}
             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${soInadimplentes ? 'bg-yellow-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
           >
             Inadimplentes
           </button>
-          <span className="text-sm text-gray-500 ml-1">{filtrados.length}</span>
+          <span className="text-sm text-gray-500 ml-1">{resultado?.total ?? 0}</span>
+          <button
+            onClick={exportarCsv}
+            disabled={exportando}
+            className="text-xs px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 ml-1"
+          >
+            {exportando ? 'Exportando...' : 'CSV'}
+          </button>
           <button
             onClick={abrirNovo}
-            className="text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors ml-2"
+            className="text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors ml-1"
           >
             + Novo Cliente
           </button>
@@ -250,6 +275,15 @@ export default function ClientesPage() {
               ))}
             </tbody>
           </table>
+          {resultado && (
+            <Pagination
+              page={resultado.page}
+              totalPages={resultado.totalPages}
+              total={resultado.total}
+              limit={LIMIT}
+              onChange={(p) => setPage(p)}
+            />
+          )}
         </div>
       )}
 
