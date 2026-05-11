@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── OLT ────────────────────────────────────────────────────────────────────
+
+model Olt {
+  id             String   @id @default(uuid())
+  nome           String
+  ip             String   @unique
+  marca          String
+  modelo         String
+  portaGerencia  Int      @default(23)
+  comunidadeSnmp String   @default("public")
+  versaoSnmp     String   @default("2c")
+  usuario        String?
+  senha          String?
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ctos     Cto[]
+  ponPorts OltPonPort[]
+
+  @@map("olts")
+}
+
+model OltPonPort {
+  id        String  @id @default(uuid())
+  oltId     String
+  slot      Int
+  porta     Int
+  descricao String?
+
+  olt  Olt   @relation(fields: [oltId], references: [id])
+  ctos Cto[]
+
+  @@unique([oltId, slot, porta])
+  @@map("olt_pon_ports")
+}
+
+// ─── CTO ─────────────────────────────────────────────────────────────────────
+
+model Cto {
+  id         String   @id @default(uuid())
+  nome       String
+  endereco   String?
+  latitude   Decimal  @db.Decimal(10, 8)
+  longitude  Decimal  @db.Decimal(11, 8)
+  capacidade Int
+  oltId      String
+  ponPortId  String?
+  observacao String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  olt     Olt         @relation(fields: [oltId], references: [id])
+  ponPort OltPonPort? @relation(fields: [ponPortId], references: [id])
+  portas  CtoPorta[]
+
+  @@map("ctos")
+}
+
+model CtoPorta {
+  id            String      @id @default(uuid())
+  ctoId         String
+  numero        Int
+  status        StatusPorta @default(LIVRE)
+  sinalDbm      Decimal?    @db.Decimal(6, 2)
+  clienteId     String?     @unique
+  reservadaPara String?
+  updatedAt     DateTime    @updatedAt
+
+  cto     Cto      @relation(fields: [ctoId], references: [id])
+  cliente Cliente? @relation(fields: [clienteId], references: [id])
+
+  @@unique([ctoId, numero])
+  @@map("cto_portas")
+}
+
+enum StatusPorta {
+  LIVRE
+  OCUPADA
+  RESERVADA
+  DEFEITO
+}
+
+// ─── CLIENTE ─────────────────────────────────────────────────────────────────
+
+model Cliente {
+  id          String @id @default(uuid())
+  nome        String
+  cpfCnpj     String @unique
+  email       String?
+  telefone    String?
+  celular     String?
+  cep         String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  uf          String? @db.Char(2)
+
+  usuarioPppoe String  @unique
+  senhaPppoe   String
+  statusPppoe  StatusPppoe @default(ATIVO)
+  ipFixo       String?
+
+  serialOnu  String?  @unique
+  macOnu     String?
+  modeloOnu  String?
+  sinalOnu   Decimal? @db.Decimal(6, 2)
+  statusOnu  StatusOnu @default(OFFLINE)
+
+  planoId String?
+  plano   Plano?  @relation(fields: [planoId], references: [id])
+
+  statusFinanceiro StatusFinanceiro @default(EM_DIA)
+  diaVencimento    Int              @default(10)
+  dataAtivacao     DateTime         @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ctoPorta     CtoPorta?
+  faturas      Fatura[]
+  notificacoes Notificacao[]
+
+  @@map("clientes")
+}
+
+enum StatusPppoe {
+  ATIVO
+  BLOQUEADO
+  CANCELADO
+}
+
+enum StatusOnu {
+  ONLINE
+  OFFLINE
+  PROVISIONANDO
+}
+
+enum StatusFinanceiro {
+  EM_DIA
+  INADIMPLENTE
+  SUSPENSO
+  CANCELADO
+}
+
+// ─── PLANO ───────────────────────────────────────────────────────────────────
+
+model Plano {
+  id           String  @id @default(uuid())
+  nome         String
+  velocidadeUp Int
+  velocidadeDn Int
+  valor        Decimal @db.Decimal(10, 2)
+  ativo        Boolean @default(true)
+  createdAt    DateTime @default(now())
+
+  clientes Cliente[]
+
+  @@map("planos")
+}
+
+// ─── FINANCEIRO ──────────────────────────────────────────────────────────────
+
+model Fatura {
+  id                   String       @id @default(uuid())
+  clienteId            String
+  valor                Decimal      @db.Decimal(10, 2)
+  vencimento           DateTime
+  status               StatusFatura @default(PENDENTE)
+  pixQrCode            String?
+  pixTxId              String?      @unique
+  boletoLinhaDigitavel String?
+  boletoNossoNumero    String?
+  dataPagamento        DateTime?
+  valorPago            Decimal?     @db.Decimal(10, 2)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+
+  @@map("faturas")
+}
+
+enum StatusFatura {
+  PENDENTE
+  PAGA
+  VENCIDA
+  CANCELADA
+}
+
+model Notificacao {
+  id        String           @id @default(uuid())
+  clienteId String
+  tipo      TipoNotificacao
+  canal     CanalNotificacao
+  mensagem  String
+  enviado   Boolean          @default(false)
+  enviadoEm DateTime?
+  createdAt DateTime         @default(now())
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+
+  @@map("notificacoes")
+}
+
+enum TipoNotificacao {
+  AVISO_VENCIMENTO
+  BOLETO_GERADO
+  PAGAMENTO_CONFIRMADO
+  BLOQUEIO
+  CORTE_CABO
+}
+
+enum CanalNotificacao {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  role      Role     @default(OPERADOR)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  OPERADOR
+}
+
+// ─── ALARMES ─────────────────────────────────────────────────────────────────
+
+model Alarme {
+  id          String     @id @default(uuid())
+  tipo        TipoAlarme
+  descricao   String
+  ctoId       String?
+  oltId       String?
+  resolvido   Boolean    @default(false)
+  resolvidoEm DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@map("alarmes")
+}
+
+enum TipoAlarme {
+  CORTE_CABO
+  OLT_OFFLINE
+  SINAL_CRITICO
+  ALTA_INADIMPLENCIA
+}
