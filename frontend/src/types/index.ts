@@ -105,6 +105,30 @@ export interface Notificacao {
   createdAt: string;
 }
 
+export type TipoOS = 'INSTALACAO' | 'MANUTENCAO' | 'SUPORTE' | 'RETIRADA' | 'VISITA';
+export type StatusOS = 'ABERTA' | 'EM_ANDAMENTO' | 'CONCLUIDA' | 'CANCELADA';
+export type PrioridadeOS = 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
+
+export interface OrdemServico {
+  id: string;
+  numero: number;
+  tipo: TipoOS;
+  status: StatusOS;
+  prioridade: PrioridadeOS;
+  titulo: string;
+  descricao: string | null;
+  clienteId: string | null;
+  tecnicoId: string | null;
+  endereco: string | null;
+  agendadoPara: string | null;
+  iniciadoEm: string | null;
+  concluidoEm: string | null;
+  observacaoTecnico: string | null;
+  createdAt: string;
+  cliente: { id: string; nome: string; cpfCnpj: string; celular: string | null } | null;
+  tecnico: { id: string; nome: string; email: string } | null;
+}
+
 export interface User {
   id: string;
   nome: string;

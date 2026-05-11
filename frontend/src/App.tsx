@@ -13,6 +13,7 @@ import AlarmesPage from './pages/AlarmesPage';
 import CtosPage from './pages/CtosPage';
 import NotificacoesPage from './pages/NotificacoesPage';
 import UsuariosPage from './pages/UsuariosPage';
+import OrdensServicoPage from './pages/OrdensServicoPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="alarmes" element={<AlarmesPage />} />
             <Route path="notificacoes" element={<NotificacoesPage />} />
             <Route path="usuarios" element={<UsuariosPage />} />
+            <Route path="ordens-servico" element={<OrdensServicoPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

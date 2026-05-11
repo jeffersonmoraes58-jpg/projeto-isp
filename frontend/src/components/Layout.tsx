@@ -14,6 +14,7 @@ const nav = [
   { to: '/financeiro', label: 'Financeiro', icon: '💰' },
   { to: '/alarmes', label: 'Alarmes', icon: '🔔' },
   { to: '/notificacoes', label: 'Notificações', icon: '📨' },
+  { to: '/ordens-servico', label: 'Ordens de Serviço', icon: '🔧' },
   { to: '/usuarios', label: 'Usuários', icon: '🔐' },
 ];
 

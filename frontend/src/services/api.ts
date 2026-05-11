@@ -95,4 +95,17 @@ export const notificacoesApi = {
   processar: () => api.post('/notificacoes/processar').then((r) => r.data),
 };
 
+export const ordensServicoApi = {
+  getAll: (params?: { status?: string; tipo?: string; page?: number; limit?: number }) =>
+    api.get('/ordens-servico', { params }).then((r) => r.data),
+  getOne: (id: string) => api.get(`/ordens-servico/${id}`).then((r) => r.data),
+  getStats: () => api.get('/ordens-servico/stats').then((r) => r.data),
+  create: (body: object) => api.post('/ordens-servico', body).then((r) => r.data),
+  update: (id: string, body: object) => api.put(`/ordens-servico/${id}`, body).then((r) => r.data),
+  iniciar: (id: string) => api.put(`/ordens-servico/${id}/iniciar`).then((r) => r.data),
+  concluir: (id: string, observacaoTecnico?: string) =>
+    api.put(`/ordens-servico/${id}/concluir`, { observacaoTecnico }).then((r) => r.data),
+  cancelar: (id: string) => api.put(`/ordens-servico/${id}/cancelar`).then((r) => r.data),
+};
+
 export default api;

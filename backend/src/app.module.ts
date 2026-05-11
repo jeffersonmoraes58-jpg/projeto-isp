@@ -14,6 +14,7 @@ import { AlarmesModule } from './modules/alarmes/alarmes.module';
 import { AuthModule } from './auth/auth.module';
 import { JobsModule } from './jobs/jobs.module';
 import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
+import { OrdensServicoModule } from './modules/ordens-servico/ordens-servico.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -33,6 +34,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     PlanosModule,
     AlarmesModule,
     NotificacoesModule,
+    OrdensServicoModule,
     JobsModule,
   ],
   providers: [

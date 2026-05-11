@@ -127,9 +127,10 @@ model Cliente {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ctoPorta     CtoPorta?
-  faturas      Fatura[]
-  notificacoes Notificacao[]
+  ctoPorta      CtoPorta?
+  faturas       Fatura[]
+  notificacoes  Notificacao[]
+  ordensServico OrdemServico[]
 
   @@map("clientes")
 }
@@ -239,12 +240,62 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  ordensServico OrdemServico[]
+
   @@map("users")
 }
 
 enum Role {
   ADMIN
   OPERADOR
+}
+
+// ─── ORDENS DE SERVIÇO ───────────────────────────────────────────────────────
+
+model OrdemServico {
+  id                String       @id @default(uuid())
+  numero            Int          @unique @default(autoincrement())
+  tipo              TipoOS
+  status            StatusOS     @default(ABERTA)
+  prioridade        PrioridadeOS @default(MEDIA)
+  titulo            String
+  descricao         String?
+  clienteId         String?
+  tecnicoId         String?
+  endereco          String?
+  agendadoPara      DateTime?
+  iniciadoEm        DateTime?
+  concluidoEm       DateTime?
+  observacaoTecnico String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  cliente Cliente? @relation(fields: [clienteId], references: [id])
+  tecnico User?    @relation(fields: [tecnicoId], references: [id])
+
+  @@map("ordens_servico")
+}
+
+enum TipoOS {
+  INSTALACAO
+  MANUTENCAO
+  SUPORTE
+  RETIRADA
+  VISITA
+}
+
+enum StatusOS {
+  ABERTA
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum PrioridadeOS {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
 }
 
 // ─── ALARMES ─────────────────────────────────────────────────────────────────
