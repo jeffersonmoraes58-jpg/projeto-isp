@@ -73,6 +73,33 @@ export class CtosService {
     return this.prisma.cto.update({ where: { id }, data: dto as any });
   }
 
+  async associarCliente(portaId: string, clienteId: string) {
+    const porta = await this.prisma.ctoPorta.findUnique({ where: { id: portaId } });
+    if (!porta) throw new NotFoundException('Porta não encontrada');
+
+    // Remove cliente de outra porta se já estiver associado
+    await this.prisma.ctoPorta.updateMany({
+      where: { clienteId },
+      data: { clienteId: null, status: 'LIVRE' },
+    });
+
+    return this.prisma.ctoPorta.update({
+      where: { id: portaId },
+      data: { clienteId, status: 'OCUPADA' },
+      include: { cliente: { select: { id: true, nome: true, statusOnu: true, sinalOnu: true } } },
+    });
+  }
+
+  async liberarPorta(portaId: string) {
+    const porta = await this.prisma.ctoPorta.findUnique({ where: { id: portaId } });
+    if (!porta) throw new NotFoundException('Porta não encontrada');
+
+    return this.prisma.ctoPorta.update({
+      where: { id: portaId },
+      data: { clienteId: null, status: 'LIVRE' },
+    });
+  }
+
   // Atualiza sinal de uma porta específica
   atualizarSinalPorta(portaId: string, sinalDbm: number) {
     return this.prisma.ctoPorta.update({

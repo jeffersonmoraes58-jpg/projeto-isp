@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
 import { CtosService } from './ctos.service';
 import { CreateCtoDto } from './dto/create-cto.dto';
 
@@ -34,5 +34,18 @@ export class CtosController {
   @Get(':id/diagnostico')
   diagnosticar(@Param('id') id: string) {
     return this.ctosService.diagnosticarCorteCabo(id);
+  }
+
+  @Put('portas/:portaId/associar')
+  associarCliente(
+    @Param('portaId') portaId: string,
+    @Body('clienteId') clienteId: string,
+  ) {
+    return this.ctosService.associarCliente(portaId, clienteId);
+  }
+
+  @Delete('portas/:portaId/liberar')
+  liberarPorta(@Param('portaId') portaId: string) {
+    return this.ctosService.liberarPorta(portaId);
   }
 }

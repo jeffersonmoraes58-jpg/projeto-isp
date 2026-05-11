@@ -33,6 +33,10 @@ export const ctosApi = {
   getDiagnostico: (id: string) => api.get(`/ctos/${id}/diagnostico`).then((r) => r.data),
   create: (body: object) => api.post('/ctos', body).then((r) => r.data),
   update: (id: string, body: object) => api.put(`/ctos/${id}`, body).then((r) => r.data),
+  associarCliente: (portaId: string, clienteId: string) =>
+    api.put(`/ctos/portas/${portaId}/associar`, { clienteId }).then((r) => r.data),
+  liberarPorta: (portaId: string) =>
+    api.delete(`/ctos/portas/${portaId}/liberar`).then((r) => r.data),
 };
 
 export const clientesApi = {
