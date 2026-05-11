@@ -21,6 +21,11 @@ export class AuthController {
     return req.user;
   }
 
+  @Put('me/senha')
+  alterarSenha(@Request() req: any, @Body() body: { senhaAtual: string; novaSenha: string }) {
+    return this.authService.alterarSenha(req.user.id, body.senhaAtual, body.novaSenha);
+  }
+
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @Post('usuarios')

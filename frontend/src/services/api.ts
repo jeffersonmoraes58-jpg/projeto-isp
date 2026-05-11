@@ -19,6 +19,8 @@ export const authApi = {
   criarUsuario: (body: { nome: string; email: string; senha: string; role?: string }) =>
     api.post('/auth/usuarios', body).then((r) => r.data),
   toggleUsuario: (id: string) => api.put(`/auth/usuarios/${id}/toggle`).then((r) => r.data),
+  alterarSenha: (senhaAtual: string, novaSenha: string) =>
+    api.put('/auth/me/senha', { senhaAtual, novaSenha }).then((r) => r.data),
 };
 
 export const dashboardApi = {

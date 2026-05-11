@@ -53,6 +53,17 @@ export class AuthService {
     });
   }
 
+  async alterarSenha(userId: string, senhaAtual: string, novaSenha: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    const valid = await bcrypt.compare(senhaAtual, user.senha);
+    if (!valid) throw new UnauthorizedException('Senha atual incorreta');
+
+    const hash = await bcrypt.hash(novaSenha, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { senha: hash } });
+    return { message: 'Senha alterada com sucesso' };
+  }
+
   async seedAdmin() {
     const count = await this.prisma.user.count();
     if (count > 0) return;
