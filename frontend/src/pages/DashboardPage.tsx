@@ -1,17 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { dashboardApi } from '../services/api';
 import { DashboardSummary } from '../types';
 
 function StatCard({
-  label,
-  value,
-  sub,
-  color,
+  label, value, sub, color,
 }: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  color: string;
+  label: string; value: string | number; sub?: string; color: string;
 }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -31,8 +28,22 @@ function AlarmeBadge({ tipo }: { tipo: string }) {
   };
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors[tipo] ?? 'bg-gray-800 text-gray-400'}`}>
-      {tipo.replace('_', ' ')}
+      {tipo.replace(/_/g, ' ')}
     </span>
+  );
+}
+
+function fmt(valor: number) {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs">
+      <p className="text-gray-400 mb-1">{label}</p>
+      <p className="text-blue-400 font-semibold">{fmt(payload[0].value)}</p>
+    </div>
   );
 }
 
@@ -41,6 +52,11 @@ export default function DashboardPage() {
     queryKey: ['dashboard'],
     queryFn: dashboardApi.getSummary,
     refetchInterval: 30_000,
+  });
+
+  const { data: faturamentoMensal = [] } = useQuery<{ mes: string; label: string; total: number }[]>({
+    queryKey: ['faturamento-mensal'],
+    queryFn: dashboardApi.getFaturamentoMensal,
   });
 
   if (isLoading) {
@@ -70,73 +86,83 @@ export default function DashboardPage() {
         <p className="text-sm text-gray-500 mt-0.5">Visão geral do sistema em tempo real</p>
       </div>
 
-      {/* Cards de métricas */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Clientes Online"
-          value={data.clientes.online}
-          sub={`${onlinePct}% do total`}
-          color="text-green-400"
-        />
-        <StatCard
-          label="Clientes Offline"
-          value={data.clientes.offline}
-          sub="conexão perdida"
-          color="text-red-400"
-        />
-        <StatCard
-          label="Inadimplentes"
-          value={data.clientes.inadimplentes}
-          sub="aguardando pagamento"
-          color="text-yellow-400"
-        />
+        <StatCard label="Clientes Online" value={data.clientes.online} sub={`${onlinePct}% do total`} color="text-green-400" />
+        <StatCard label="Clientes Offline" value={data.clientes.offline} sub="conexão perdida" color="text-red-400" />
+        <StatCard label="Inadimplentes" value={data.clientes.inadimplentes} sub="aguardando pagamento" color="text-yellow-400" />
         <StatCard
           label="Faturamento Hoje"
-          value={`R$ ${Number(data.financeiro.faturamentoDia).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          value={fmt(Number(data.financeiro.faturamentoDia))}
           sub="pagamentos confirmados"
           color="text-blue-400"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Status OLTs */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">Status das OLTs</h3>
-          <div className="space-y-2">
-            {data.olts.length === 0 && (
-              <p className="text-sm text-gray-600">Nenhuma OLT cadastrada</p>
-            )}
-            {data.olts.map((olt) => (
-              <div key={olt.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-white">{olt.nome}</p>
-                  <p className="text-xs text-gray-500">{olt.ip}</p>
-                </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    olt.ativo ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'
-                  }`}
-                >
-                  {olt.ativo ? 'Online' : 'Offline'}
-                </span>
-              </div>
-            ))}
-          </div>
+      {/* Gráfico + OLTs + Alarmes */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Faturamento mensal */}
+        <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-gray-300 mb-4">Faturamento — Últimos 6 Meses</h3>
+          {faturamentoMensal.length === 0 ? (
+            <p className="text-sm text-gray-600 text-center py-8">Sem dados de faturamento</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={faturamentoMensal} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={52}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59,130,246,0.08)' }} />
+                <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
-        {/* Alarmes ativos */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">Alarmes Ativos</h3>
-          <div className="space-y-2">
-            {data.alarmes.length === 0 && (
-              <p className="text-sm text-gray-600">Nenhum alarme ativo</p>
-            )}
-            {data.alarmes.map((a) => (
-              <div key={a.id} className="flex items-start gap-3 py-2 border-b border-gray-800 last:border-0">
-                <AlarmeBadge tipo={a.tipo} />
-                <p className="text-xs text-gray-400 flex-1">{a.descricao}</p>
-              </div>
-            ))}
+        {/* OLTs + Alarmes empilhados */}
+        <div className="space-y-4">
+          {/* Status OLTs */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-gray-300 mb-3">Status das OLTs</h3>
+            <div className="space-y-2">
+              {data.olts.length === 0 && <p className="text-sm text-gray-600">Nenhuma OLT cadastrada</p>}
+              {data.olts.map((olt) => (
+                <div key={olt.id} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-white">{olt.nome}</p>
+                    <p className="text-xs text-gray-500">{olt.ip}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${olt.ativo ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>
+                    {olt.ativo ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Alarmes ativos */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-gray-300 mb-3">Alarmes Ativos</h3>
+            <div className="space-y-2">
+              {data.alarmes.length === 0 && <p className="text-sm text-gray-600">Nenhum alarme ativo</p>}
+              {data.alarmes.map((a) => (
+                <div key={a.id} className="flex items-start gap-2 py-1.5 border-b border-gray-800 last:border-0">
+                  <AlarmeBadge tipo={a.tipo} />
+                  <p className="text-xs text-gray-400 flex-1 leading-relaxed">{a.descricao}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

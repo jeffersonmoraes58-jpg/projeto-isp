@@ -9,4 +9,9 @@ export class DashboardController {
   getSummary() {
     return this.dashboardService.getSummary();
   }
+
+  @Get('faturamento-mensal')
+  getFaturamentoMensal() {
+    return this.dashboardService.getFaturamentoMensal();
+  }
 }

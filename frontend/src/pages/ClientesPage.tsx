@@ -39,6 +39,7 @@ const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2
 export default function ClientesPage() {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState('');
+  const [soInadimplentes, setSoInadimplentes] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Cliente | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
@@ -46,8 +47,8 @@ export default function ClientesPage() {
   const [erro, setErro] = useState('');
 
   const { data: clientes = [], isLoading } = useQuery<Cliente[]>({
-    queryKey: ['clientes'],
-    queryFn: () => clientesApi.getAll(),
+    queryKey: ['clientes', soInadimplentes],
+    queryFn: () => clientesApi.getAll(soInadimplentes ? { inadimplente: true } : undefined),
   });
 
   const { data: planos = [] } = useQuery<Plano[]>({
@@ -153,11 +154,23 @@ export default function ClientesPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">Clientes</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">{filtrados.length} registros</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSoInadimplentes(false)}
+            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${!soInadimplentes ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setSoInadimplentes(true)}
+            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${soInadimplentes ? 'bg-yellow-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+          >
+            Inadimplentes
+          </button>
+          <span className="text-sm text-gray-500 ml-1">{filtrados.length}</span>
           <button
             onClick={abrirNovo}
-            className="text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+            className="text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors ml-2"
           >
             + Novo Cliente
           </button>

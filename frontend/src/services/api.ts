@@ -23,6 +23,7 @@ export const authApi = {
 
 export const dashboardApi = {
   getSummary: () => api.get('/dashboard').then((r) => r.data),
+  getFaturamentoMensal: () => api.get('/dashboard/faturamento-mensal').then((r) => r.data),
 };
 
 export const ctosApi = {
