@@ -72,11 +72,13 @@ model CtoPorta {
   status        StatusPorta @default(LIVRE)
   sinalDbm      Decimal?    @db.Decimal(6, 2)
   clienteId     String?     @unique
+  contratoId    String?     @unique
   reservadaPara String?
   updatedAt     DateTime    @updatedAt
 
-  cto     Cto      @relation(fields: [ctoId], references: [id])
-  cliente Cliente? @relation(fields: [clienteId], references: [id])
+  cto      Cto       @relation(fields: [ctoId], references: [id])
+  cliente  Cliente?  @relation(fields: [clienteId], references: [id])
+  contrato Contrato? @relation(fields: [contratoId], references: [id])
 
   @@unique([ctoId, numero])
   @@map("cto_portas")
@@ -131,8 +133,50 @@ model Cliente {
   faturas       Fatura[]
   notificacoes  Notificacao[]
   ordensServico OrdemServico[]
+  contratos     Contrato[]
 
   @@map("clientes")
+}
+
+// ─── CONTRATO ────────────────────────────────────────────────────────────────
+
+model Contrato {
+  id               String           @id @default(uuid())
+  clienteId        String
+  apelido          String?
+
+  usuarioPppoe     String           @unique
+  senhaPppoe       String
+  statusPppoe      StatusPppoe      @default(ATIVO)
+  ipFixo           String?
+
+  serialOnu        String?          @unique
+  macOnu           String?
+  modeloOnu        String?
+  sinalOnu         Decimal?         @db.Decimal(6, 2)
+  statusOnu        StatusOnu        @default(OFFLINE)
+
+  logradouro       String?
+  numero           String?
+  complemento      String?
+  bairro           String?
+  cidade           String?
+  uf               String?          @db.Char(2)
+  cep              String?
+
+  planoId          String?
+  diaVencimento    Int              @default(10)
+  statusFinanceiro StatusFinanceiro @default(EM_DIA)
+  dataAtivacao     DateTime         @default(now())
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  cliente  Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  plano    Plano?   @relation(fields: [planoId], references: [id])
+  ctoPorta CtoPorta?
+
+  @@map("contratos")
 }
 
 enum StatusPppoe {
@@ -165,7 +209,8 @@ model Plano {
   ativo        Boolean @default(true)
   createdAt    DateTime @default(now())
 
-  clientes Cliente[]
+  clientes  Cliente[]
+  contratos Contrato[]
 
   @@map("planos")
 }

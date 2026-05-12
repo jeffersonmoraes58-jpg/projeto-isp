@@ -33,7 +33,10 @@ export class CtosService {
       include: {
         portas: {
           orderBy: { numero: 'asc' },
-          include: { cliente: { select: { id: true, nome: true, statusOnu: true, sinalOnu: true } } },
+          include: {
+            cliente: { select: { id: true, nome: true, statusOnu: true, sinalOnu: true } },
+            contrato: { select: { id: true, usuarioPppoe: true, apelido: true, statusOnu: true, sinalOnu: true, cliente: { select: { nome: true } } } },
+          },
         },
         olt: true,
         ponPort: true,
@@ -73,20 +76,24 @@ export class CtosService {
     return this.prisma.cto.update({ where: { id }, data: dto as any });
   }
 
-  async associarCliente(portaId: string, clienteId: string) {
+  async associar(portaId: string, clienteId?: string, contratoId?: string) {
     const porta = await this.prisma.ctoPorta.findUnique({ where: { id: portaId } });
     if (!porta) throw new NotFoundException('Porta não encontrada');
 
-    // Remove cliente de outra porta se já estiver associado
-    await this.prisma.ctoPorta.updateMany({
-      where: { clienteId },
-      data: { clienteId: null, status: 'LIVRE' },
-    });
+    if (clienteId) {
+      await this.prisma.ctoPorta.updateMany({ where: { clienteId }, data: { clienteId: null, status: 'LIVRE' } });
+    }
+    if (contratoId) {
+      await this.prisma.ctoPorta.updateMany({ where: { contratoId }, data: { contratoId: null, status: 'LIVRE' } });
+    }
 
     return this.prisma.ctoPorta.update({
       where: { id: portaId },
-      data: { clienteId, status: 'OCUPADA' },
-      include: { cliente: { select: { id: true, nome: true, statusOnu: true, sinalOnu: true } } },
+      data: { clienteId: clienteId ?? null, contratoId: contratoId ?? null, status: 'OCUPADA' },
+      include: {
+        cliente: { select: { id: true, nome: true, statusOnu: true, sinalOnu: true } },
+        contrato: { select: { id: true, usuarioPppoe: true, apelido: true, statusOnu: true, sinalOnu: true, cliente: { select: { nome: true } } } },
+      },
     });
   }
 
@@ -96,7 +103,7 @@ export class CtosService {
 
     return this.prisma.ctoPorta.update({
       where: { id: portaId },
-      data: { clienteId: null, status: 'LIVRE' },
+      data: { clienteId: null, contratoId: null, status: 'LIVRE' },
     });
   }
 

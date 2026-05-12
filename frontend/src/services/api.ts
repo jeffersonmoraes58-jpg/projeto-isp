@@ -95,6 +95,16 @@ export const notificacoesApi = {
   processar: () => api.post('/notificacoes/processar').then((r) => r.data),
 };
 
+export const contratosApi = {
+  getByCliente: (clienteId: string) =>
+    api.get('/contratos', { params: { clienteId } }).then((r) => r.data),
+  create: (body: object) => api.post('/contratos', body).then((r) => r.data),
+  update: (id: string, body: object) => api.put(`/contratos/${id}`, body).then((r) => r.data),
+  remove: (id: string) => api.delete(`/contratos/${id}`).then((r) => r.data),
+  bloquear: (id: string) => api.put(`/contratos/${id}/bloquear`).then((r) => r.data),
+  desbloquear: (id: string) => api.put(`/contratos/${id}/desbloquear`).then((r) => r.data),
+};
+
 export const ordensServicoApi = {
   getAll: (params?: { status?: string; tipo?: string; page?: number; limit?: number }) =>
     api.get('/ordens-servico', { params }).then((r) => r.data),

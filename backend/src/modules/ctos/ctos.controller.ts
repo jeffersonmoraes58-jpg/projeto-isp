@@ -37,11 +37,12 @@ export class CtosController {
   }
 
   @Put('portas/:portaId/associar')
-  associarCliente(
+  associar(
     @Param('portaId') portaId: string,
-    @Body('clienteId') clienteId: string,
+    @Body('clienteId') clienteId?: string,
+    @Body('contratoId') contratoId?: string,
   ) {
-    return this.ctosService.associarCliente(portaId, clienteId);
+    return this.ctosService.associar(portaId, clienteId, contratoId);
   }
 
   @Delete('portas/:portaId/liberar')

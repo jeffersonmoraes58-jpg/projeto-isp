@@ -23,6 +23,7 @@ export interface CtoPorta {
   status: 'LIVRE' | 'OCUPADA' | 'RESERVADA' | 'DEFEITO';
   sinalDbm: number | null;
   cliente: { id: string; nome: string; statusOnu: string; sinalOnu: number | null } | null;
+  contrato: { id: string; usuarioPppoe: string; apelido: string | null; statusOnu: string; sinalOnu: number | null; cliente: { nome: string } } | null;
 }
 
 export interface CtoDetail {
@@ -128,6 +129,35 @@ export interface OrdemServico {
   createdAt: string;
   cliente: { id: string; nome: string; cpfCnpj: string; celular: string | null } | null;
   tecnico: { id: string; nome: string; email: string } | null;
+}
+
+export interface Contrato {
+  id: string;
+  clienteId: string;
+  apelido: string | null;
+  usuarioPppoe: string;
+  senhaPppoe: string;
+  statusPppoe: 'ATIVO' | 'BLOQUEADO' | 'CANCELADO';
+  statusOnu: 'ONLINE' | 'OFFLINE' | 'PROVISIONANDO';
+  sinalOnu: number | null;
+  ipFixo: string | null;
+  serialOnu: string | null;
+  macOnu: string | null;
+  modeloOnu: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  cep: string | null;
+  planoId: string | null;
+  diaVencimento: number;
+  statusFinanceiro: 'EM_DIA' | 'INADIMPLENTE' | 'SUSPENSO' | 'CANCELADO';
+  dataAtivacao: string;
+  createdAt: string;
+  plano: { nome: string; velocidadeDn: number; velocidadeUp: number; valor: number } | null;
+  ctoPorta: { numero: number; cto: { nome: string } | null } | null;
 }
 
 export interface User {

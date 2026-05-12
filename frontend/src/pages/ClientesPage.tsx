@@ -4,6 +4,7 @@ import { clientesApi, planosApi } from '../services/api';
 import { Cliente, Plano } from '../types';
 import Pagination from '../components/Pagination';
 import { downloadBlob } from '../utils/download';
+import ContratosModal from '../components/ContratosModal';
 
 const statusPppoeColor: Record<string, string> = {
   ATIVO: 'bg-green-900 text-green-400',
@@ -57,6 +58,7 @@ export default function ClientesPage() {
   const clientes = resultado?.data ?? [];
 
   const [roteador, setRoteador] = useState<{ cliente: Cliente; ip: string; porta: string; protocolo: 'http' | 'https' } | null>(null);
+  const [clienteContratos, setClienteContratos] = useState<Cliente | null>(null);
 
   function abrirRoteador(c: Cliente) {
     setRoteador({ cliente: c, ip: c.ipFixo ?? '', porta: '80', protocolo: 'http' });
@@ -268,6 +270,13 @@ export default function ClientesPage() {
                         Editar
                       </button>
                       <button
+                        onClick={() => setClienteContratos(c)}
+                        className="text-xs px-2 py-1 bg-purple-900 text-purple-300 rounded hover:bg-purple-800 transition-colors"
+                        title="Gerenciar contratos do cliente"
+                      >
+                        Contratos
+                      </button>
+                      <button
                         onClick={() => abrirRoteador(c)}
                         className="text-xs px-2 py-1 bg-indigo-900 text-indigo-300 rounded hover:bg-indigo-800 transition-colors"
                         title="Acesso remoto ao roteador do cliente"
@@ -305,6 +314,10 @@ export default function ClientesPage() {
             />
           )}
         </div>
+      )}
+
+      {clienteContratos && (
+        <ContratosModal cliente={clienteContratos} onClose={() => setClienteContratos(null)} />
       )}
 
       {/* Modal Roteador */}
